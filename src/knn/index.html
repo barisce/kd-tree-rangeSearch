@@ -1,0 +1,108 @@
+<!-- https://bl.ocks.org/armollica/1593f53c0c8346d067491f39255d0b84 -->
+<html>
+    <head>
+        <style>
+            .line {
+                fill: none;
+                stroke: #ccc;
+            }
+
+            .point {
+                fill: #999;
+                stroke: #fff;
+            }
+
+            .point.scanned {
+                fill: orange;
+                stroke: #999;
+            }
+
+            .point.selected {
+                fill: red;
+                stroke: #999;
+            }
+
+            .halo {
+                fill: none;
+                stroke: red;
+            }
+        </style>
+    </head>
+    <body>
+        <script src="kd-tree.js"></script>
+        <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script>
+            var width = 960,
+                height = 500;
+
+            var svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            var data = d3.range(2000)
+                .map(function () {
+                    return {
+                        x: width * Math.random(),
+                        y: height * Math.random(),
+                        value: d3.random.normal()() // just for testing purposes
+                    };
+                });
+
+            var tree = KDTree()
+                .x(function (d) {
+                    return d.x;
+                })
+                .y(function (d) {
+                    return d.y;
+                })
+                (data);
+
+            svg.append("g").attr("class", "lines")
+                .selectAll(".line").data(tree.lines([[0, 0], [width, height]]))
+                .enter().append("path")
+                .attr("class", "line")
+                .attr("d", d3.svg.line());
+
+            var points = svg.append("g").attr("class", "points")
+                .selectAll(".point").data(tree.flatten())
+                .enter().append("circle")
+                .attr("class", "point")
+                .attr("cx", function (d) {
+                    return d.location[0];
+                })
+                .attr("cy", function (d) {
+                    return d.location[1];
+                })
+                .attr("r", 4);
+
+            var halo = svg.append("circle").attr("class", "halo");
+
+            update([width / 3, height / 2]);
+
+            svg.append("rect").attr("class", "event-canvas")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("fill-opacity", 0)
+                .on("mousemove", function () {
+                    update(d3.mouse(this));
+                });
+
+            function update(target) {
+                var nearest = tree.find(target, 10);
+
+                points
+                    .classed("scanned", function (d) {
+                        return nearest.scannedNodes.indexOf(d) !== -1;
+                    })
+                    .classed("selected", function (d) {
+                        return nearest.nearestNodes.indexOf(d) !== -1;
+                    });
+
+                halo
+                    .attr("cx", target[0])
+                    .attr("cy", target[1])
+                    .attr("r", nearest.maxDistance);
+            }
+        </script>
+    </body>
+</html>
